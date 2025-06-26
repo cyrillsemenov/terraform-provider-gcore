@@ -133,21 +133,27 @@ by adding the volume resource inside an instance resource.`,
 						"type_name": {
 							Type:        schema.TypeString,
 							Description: "Volume type name",
-							Computed:    true,
+							Optional:    true,
+							Default:     volumes.Standard,
 						},
 						"image_id": {
 							Type:        schema.TypeString,
 							Description: "Image ID for the volume",
-							Computed:    true,
+							Optional:    true,
+							// ConflictsWith: []string{"volume.*.volume_id"}, // TODO: Wait for fix from TF team
 						},
 						"size": {
 							Type:        schema.TypeInt,
 							Description: "Size of the volume in GiB",
-							Computed:    true,
+							Optional:    true,
+							// ConflictsWith: []string{"volume.*.volume_id"}, // TODO: Wait for fix from TF team
+							// RequiredWith: []string{"volume.*.image_id"}, // TODO: Wait for fix from TF team
 						},
 						"volume_id": {
-							Type:     schema.TypeString,
-							Required: true,
+							Type:        schema.TypeString,
+							Optional:    true,
+							Description: "The ID of an existing volume to attach.",
+							// ExactlyOneOf: []string{"volume.*.image_id"}, // TODO: Wait for fix from TF team
 						},
 						"attachment_tag": {
 							Type:        schema.TypeString,
@@ -161,7 +167,8 @@ by adding the volume resource inside an instance resource.`,
 						"delete_on_termination": {
 							Type:        schema.TypeBool,
 							Description: "Delete volume on termination",
-							Computed:    true,
+							Optional:    true,
+							Default:     true,
 						},
 					},
 				},

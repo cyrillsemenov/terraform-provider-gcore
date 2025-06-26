@@ -36,6 +36,7 @@ import (
 	"github.com/G-Core/gcorelabscloud-go/gcore/securitygroup/v1/securitygroups"
 	typesSG "github.com/G-Core/gcorelabscloud-go/gcore/securitygroup/v1/types"
 	"github.com/G-Core/gcorelabscloud-go/gcore/subnet/v1/subnets"
+	"github.com/G-Core/gcorelabscloud-go/gcore/volume/v1/volumes"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -205,20 +206,90 @@ func extractInterfacesMap(interfaces []interface{}) ([]routers.Interface, error)
 	return Interfaces, nil
 }
 
-func extractVolumesMap(volumes []interface{}) ([]instances.CreateVolumeOpts, error) {
-	Volumes := make([]instances.CreateVolumeOpts, len(volumes))
-	for i, volume := range volumes {
+func extractVolumesMap(volumes_set []interface{}) ([]instances.CreateVolumeOpts, error) {
+	Volumes := make([]instances.CreateVolumeOpts, len(volumes_set))
+	for i, volume := range volumes_set {
 		vol := volume.(map[string]interface{})
 		var V instances.CreateVolumeOpts
 		err := MapStructureDecoder(&V, &vol, config)
 		if err != nil {
 			return nil, err
 		}
-		V.Source = types.ExistingVolume
+		if volumeID, ok := vol["volume_id"].(string); ok && volumeID != "" {
+			V.Source = types.ExistingVolume
+		} else {
+			V.Source = types.Image
+			V.Size = vol["size"].(int)
+			V.ImageID = vol["image_id"].(string)
+			if bootIndex, ok := vol["boot_index"].(int); ok {
+				V.BootIndex = bootIndex
+			} else {
+				defaultBootIndex := 0
+				V.BootIndex = defaultBootIndex
+			}
+
+			if type_name, ok := vol["type_name"].(volumes.VolumeType); ok {
+				V.TypeName = type_name
+			} else {
+				defaultTypeName := volumes.Standard
+				V.TypeName = defaultTypeName
+			}
+
+			if del, ok := vol["delete_on_termination"].(bool); ok {
+				V.DeleteOnTermination = del
+			}
+		}
 		Volumes[i] = V
 	}
 	return Volumes, nil
 }
+
+// func extractVolumesMap(volumes []interface{}) ([]instances.CreateVolumeOpts, error) {
+// 	var Volumes []instances.CreateVolumeOpts
+// 	for _, volume := range volumes {
+// 		vol := volume.(map[string]interface{})
+// 		var V instances.CreateVolumeOpts
+
+// 		// Case 1: Attach an existing volume
+// 		if volumeID, ok := vol["volume_id"].(string); ok && volumeID != "" {
+// 			V.VolumeID = volumeID
+// 			if bootIndex, ok := vol["boot_index"].(int); ok {
+// 				V.BootIndex = bootIndex
+// 			}
+// 			V.Source = types.ExistingVolume
+// 			// V.AttachmentTag
+// 			// V.BootIndex
+// 			// V.DeleteOnTermination
+// 			// V.ImageID
+// 			// V.Metadata
+// 			// V.Name
+// 			// V.Size
+// 			// V.SnapshotID
+// 			// V.Source
+// 			// V.TypeName
+// 			// V.VolumeID
+
+// 		} else { // Case 2: Create a new volume with the instance
+// 			V.Size = vol["size"].(int)
+// 			V.ImageID = vol["image_id"].(string)
+// 			V.TypeName = vol["type_name"].(string)
+
+// 			if bootIndex, ok := vol["boot_index"].(int); ok {
+// 				V.BootIndex = bootIndex
+// 			} else {
+// 				defaultBootIndex := 0
+// 				V.BootIndex = defaultBootIndex
+// 			}
+
+// 			if del, ok := vol["delete_on_termination"].(bool); ok {
+// 				V.DeleteOnTermination = del
+// 			}
+// 		}
+
+// 		Volumes = append(Volumes, V)
+// 	}
+// 	return Volumes, nil
+// }
 
 // todo refactoring
 func extractVolumesIntoMap(volumes []interface{}) map[string]map[string]interface{} {
